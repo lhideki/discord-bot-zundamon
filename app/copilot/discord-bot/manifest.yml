@@ -1,0 +1,65 @@
+# The manifest for the "discord-bot" service.
+# Read the full specification for the "Request-Driven Web Service" type at:
+# https://aws.github.io/copilot-cli/docs/manifest/rd-web-service/
+
+# Your service name will be used in naming your resources like log groups, App Runner services, etc.
+name: discord-bot
+# The "architecture" of the service you're running.
+type: Request-Driven Web Service
+
+image:
+  # Docker build arguments.
+  # For additional overrides: https://aws.github.io/copilot-cli/docs/manifest/rd-web-service/#image-build
+  build:
+    context: ../
+    dockerfile: Dockerfile
+  port: 8080
+
+# http:
+#   healthcheck: '/'
+
+# Number of CPU units for the task.
+cpu: 256
+# Amount of memory in MiB used by the task.
+memory: 512
+
+# Connect your App Runner service to your environment's VPC.
+# network:
+#   vpc:
+#     placement: private
+
+
+# Enable tracing for the service.
+# observability:
+#   tracing: awsxray
+
+# Optional fields for more advanced use-cases.
+#
+# variables:                    # Pass environment variables as key value pairs.
+#   LOG_LEVEL: info
+#
+# tags:                         # Pass tags as key value pairs.
+#   project: project-name
+#
+# secrets:                      # Pass secrets from AWS Systems Manager (SSM) Parameter Store and Secrets Manager.
+#   GITHUB_TOKEN: GITHUB_TOKEN  # The key is the name of the environment variable, the value is the name of an SSM parameter.
+secrets:
+  OPENAI_API_KEY: /discord-bot-zundamon/OpenAiApiKey
+  LANGSMITH_API_KEY: /discord-bot-zundamon/LangSmith/ApiKey
+  LANGSMITH_PROJECT: /discord-bot-zundamon/LangSmith/Project
+  DISCORD_BOT_TOKEN: /discord-bot-zundamon/Discord/BotToken
+  DISCORD_GUILD_ID: /discord-bot-zundamon/Discord/GuildId
+
+# You can override any of the values defined above by environment.
+# environments:
+#   test:
+#     variables:
+#       LOG_LEVEL: debug        # Log level for the "test" environment.
+
+environments:
+  test:
+    variables:
+      LOG_LEVEL: INFO
+      POWERTOOLS_LOGGER_SAMPLE_RATE: 0.1
+      POWERTOOLS_LOGGER_LOG_EVENT: true
+      POWERTOOLS_SERVICE_NAME: discord-bot-zundamon

@@ -1,0 +1,11 @@
+version = 0.1
+[default]
+[default.deploy]
+[default.deploy.parameters]
+capabilities = "CAPABILITY_IAM"
+confirm_changeset = false
+image_repositories = []
+region = "ap-northeast-1"
+s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-1sif6hbdi9bbl"
+s3_prefix = "discord-bot-zundamon"
+stack_name = "discord-bot-zundamon"

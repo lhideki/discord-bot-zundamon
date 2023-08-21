@@ -1,0 +1,95 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  slack-gpt-backend
+
+# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
+Globals:
+  Function:
+    Timeout: 120
+    MemorySize: 10240
+    Tracing: Active
+    Environment:
+      Variables:
+        LOG_LEVEL: INFO
+        POWERTOOLS_LOGGER_SAMPLE_RATE: 0.1
+        POWERTOOLS_LOGGER_LOG_EVENT: true
+        POWERTOOLS_SERVICE_NAME: discord-bot-zundamon
+
+Parameters:
+  OpenAiApiKey:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: '/discord-bot-zundamon/OpenAiApiKey'
+  LangSmithApiKey:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: '/discord-bot-zundamon/LangSmith/ApiKey'
+  LangSmithProject:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: '/discord-bot-zundamon/LangSmith/Project'
+  DiscordPublicKey:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: '/discord-bot-zundamon/Discord/PublicKey'
+  DiscordCommandName:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: '/discord-bot-zundamon/Discord/CommandName'
+
+Resources:
+  DiscordChatbotFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      PackageType: Image
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName: !Ref ConversationHistoriesTable
+      Environment:
+        Variables:
+          CONVERSATIONS_HISTORIES_TABLE: !Ref ConversationHistoriesTable
+          OPENAI_API_KEY: !Ref OpenAiApiKey
+          LANGSMITH_API_KEY: !Ref LangSmithApiKey
+          LANGSMITH_PROJECT: !Ref LangSmithProject
+          DISCORD_PUBLIC_KEY: !Ref DiscordPublicKey
+          DISCORD_COMMAND_NAME: !Ref DiscordCommandName
+      Architectures:
+        - x86_64
+      Description: Discord用のずんだもんチャットボットです。
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /{proxy}
+            Method: ANY
+    Metadata:
+      Dockerfile: app/Dockerfile
+      DockerContext: ../
+      DockerTag: v1
+  ConversationHistoriesTable:
+    Type: AWS::Serverless::SimpleTable
+    Properties:
+      PrimaryKey:
+        Name: id
+        Type: String
+  ApplicationResourceGroup:
+    Type: AWS::ResourceGroups::Group
+    Properties:
+      Name:
+        Fn::Join:
+        - ''
+        - - ApplicationInsights-SAM-
+          - Ref: AWS::StackName
+      ResourceQuery:
+        Type: CLOUDFORMATION_STACK_1_0
+  ApplicationInsightsMonitoring:
+    Type: AWS::ApplicationInsights::Application
+    Properties:
+      ResourceGroupName:
+        Fn::Join:
+        - ''
+        - - ApplicationInsights-SAM-
+          - Ref: AWS::StackName
+      AutoConfigurationEnabled: 'true'
+    DependsOn: ApplicationResourceGroup
+
+Outputs:
+  WebEndpoint:
+    Description: API Gateway endpoint URL for Prod stage
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
