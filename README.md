@@ -1,100 +1,100 @@
 # discord-bot-zundamon
 
-OpenAI の API を利用し、ずんだもん風で質問応答する Discord 用の Bot です。DuckDuckGo と連携し、Web 検索した知識を利用した回答をします。
+This is a Discord bot that uses OpenAI's API to answer questions in the style of "zundamon" and incorporates knowledge from web searches through integration with DuckDuckGo.
 
-## アーキテクチャ概要
+## Architecture
 
-discord.py を AWS AppRunner で起動します。AppRunner は AWS Copilot で管理します。
+Start `discord.py` on `AWS AppRunner`. Manage it with `AWS Copilot`.
 
-## ADR
+## ADR(Architecture Decision Record)
 
-### pyproject.toml の配置場所
+### Placement of pyproject.toml
 
-プロジェクトのルートをそのまま VS Code で開いた場合に、pyproject.toml がルートにあると VS Code のデフォルトの設定のままで Python の実効環境が選択できます。
+If you open the project root directly in VS Code, you can select the Python execution environment with the default settings of VS Code because pyproject.toml is in the root.
 
-### AWS Lambda ではなく AWS AppRunner を選択している理由
+### Reasons for choosing AWS AppRunner instead of AWS Lambda
 
-AWS Lambda で Discrod のボットを作成する方法は、以下で解説されています。
+The following article explains how to create a Discord bot using AWS Lambda:
 
 -   [aws-lambda-discord-bot](https://github.com/ker0olos/aws-lambda-discord-bot)
 
-この方法では Discord の REST API を直接利用するため、discord.py は利用していません。AWS Lambda でも discord.py を利用することができると思われますが、discord.py は Python の asyncio を前提としているため、AWS Lambda の Handler で個別の工夫が必要だと考えられます。
+This method uses Discord's REST API directly, so it does not use discord.py. It is possible to use discord.py with AWS Lambda, but since discord.py assumes Python's asyncio, individual efforts are required in the AWS Lambda Handler.
 
-また、Discord の仕様ではボットの初回応答は(公式情報ではありませんが)3 秒以内とする必要があるようです。本実装では LangChain を利用しており、LangChain のパッケージサイズの問題より、AWS Lambda を On Docker で動かす必要があります。Lambda on Docker のコールドスタートは時間がかかるため、3 秒以内の応答制限を守れないことがありました。
+Also, according to Discord's specifications, the initial response of the bot needs to be within 3 seconds (this is not official information). In this implementation, LangChain is used, and due to the package size of LangChain, it is necessary to run AWS Lambda on Docker. Cold starts on Lambda on Docker can take time, so it may not be possible to comply with the 3-second response limit.
 
-初回応答用とフォローアップメッセージ用の Lambda を別とすることで、上記の制限内で対応することも可能ですが、実装が複雑になることからコールドスタートの問題が発生しない AWS AppRunner を選択しています。
+It is possible to comply with the above limit by separating the Lambda for the initial response and the follow-up message, but this would make the implementation more complex. Therefore, AWS AppRunner, which does not have cold start issues, was chosen.
 
-### discord.py と AWS AppRunner を組み合わせる際の注意事項
+### Notes on combining discord.py and AWS AppRunner
 
-AWS AppRunner は HealthCheck のために、デプロイ時に指定した URL で応答する必要があります。discord.py は Web サーバで外部からのクリエストを待ち受ける方式ではないため、HealthCheck 用の Web サーバを別途用意する必要があります。
+AWS AppRunner requires a response at the URL specified during deployment for HealthCheck. However, discord.py does not wait for external requests in the form of a web server, so a separate web server is required for HealthCheck.
 
-本実装では、discord.py の Client 起動時の hok で非同期で Flask サーバを起動することで、HealthCheck 用の待ち受けを行っています。
+In this implementation, a Flask server is started asynchronously in the hook when the discord.py client is started to listen for HealthCheck.
 
-## フォルダ構成
+## Folder structure
 
 -   app
 -   docs
 -   experiments
 -   notebooks
 
-## 開発環境の準備
+## Prepare for development
 
 ```bash
 git clone [This repository]
 poetry install
 ```
 
-## Deploy 手順
+## Deploy Procedure
 
-1. Discord Developer Portal で Bot を作成する
-2. Discord サーバに Bot を登録する
-3. SSM Parameter を設定する
-4. Deploy する
+1. Create Bot application on Discord Developer Portal.
+2. Register Bot for Discord server.
+3. Setting up SSM Parameter
+4. Deploy
 
-### Discord Developer Portal で Bot を作成する
+### Create Bot application on Discord Developer Portal.
 
-以下を参考に Bot を作成します。
-
--   https://discordpy.readthedocs.io/ja/latest/discord.html
-
-### Discord サーバに Bot を登録する
-
-以下を参考に Discord サーバに Bot を登録します。
+Create a Bot with reference to the following.
 
 -   https://discordpy.readthedocs.io/ja/latest/discord.html
 
-### SSM Parameter を設定する
+### Register Bot for Discord server.
 
-以下の SSM Parameter を手動で設定します。
+Register the Bot on the Discord server with the following reference.
+
+-   https://discordpy.readthedocs.io/ja/latest/discord.html
+
+### Setting up SSM Parameter
+
+Manually set up the following SSM Parameter.
 
 -   /discord-bot-zundamon/OpenAiApiKey
-    -   OpenAI の ApiKey です。
+    -   OpenAI's ApiKey.
 -   /discord-bot-zundamon/LangSmith/ApiKey
-    -   LangSmith の ApiKey です。LangSmith を利用しない場合は、設定する必要はありません。
+    -   LangSmith's ApiKey. If you do not use LangSmith, you do not need to set this.
 -   /discord-bot-zundamon/LangSmith/Project
-    -   LangSmith の Project 名 です。LangSmith を利用しない場合は、設定する必要はありません。
+    -   LangSmith's Project name。If you do not use LangSmith, you do not need to set this.
 -   /discord-bot-zundamon/Discord/BotToken
-    -   Discord の Bot Token です。
+    -   Discord's Bot Token.
 -   /discord-bot-zundamon/Discord/GuildId
-    -   Discord の Bot を設定する Guild(サーバー)の Id です。
+    -   Id of the Guild (server) where the Discord Bot is set up.
 
-### Deploy する
+### Deploy
 
 ```bash
 cd app
 copilot deploy
 ```
 
-## 備考
+## Notes.
 
--   サーバ管理者はコマンドの権限制限の影響を受けません。このため、動作確認用に別ユーザを用意する必要があります。なお、Discrod の機能で制限できるのはスラッシュコマンドのみです。
--   Discord の機能では、ボットに対するメンションを制限することはできません。
--   discord.py を利用しない場合、スラッシュコマンドは事前に API を直接呼び出して登録しておく必要があります。
--   Discord のボットコマンドは２種類あり、現在はスラッシュコマンドが推奨されています。スラッシュコマンドは SDK 的には Application Command と呼ばれます。
--   Bot の初回レスポンスは 3 秒以内で行う必要があります。
+-   The server administrator is not affected by the permission restrictions of the slash command. For this reason, a separate user must be prepared for operation checks. Note that only slash commands can be restricted by the Discrod function.
+-   The Discord function cannot restrict mentions to bots.
+-   If you do not use discord.py, slash commands must be registered in advance by calling the API directly.
+-   There are two types of Discord bot commands, and the slash command is currently recommended. The slash command is called the Application Command in SDK terms.
+-   The Bot's initial response should take no more than 3 seconds.
     -   https://stackoverflow.com/questions/73361556/error-discord-errors-notfound-404-not-found-error-code-10062-unknown-inter
 
-## 参考文献
+## References
 
 -   [Discord - DEVELOPER PORTAL](https://discord.com/developers/applications)
 -   [discord.py](https://discordpy.readthedocs.io/ja/latest/index.html)
