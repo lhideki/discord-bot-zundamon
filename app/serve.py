@@ -19,7 +19,7 @@ from aws_lambda_powertools import Logger
 
 logger = Logger()
 intents = discord.Intents.default()
-intents.message_content = True  # メッセージの内容を取得する権限
+intents.message_content = True  # Permission of read message.
 
 # LangSmith
 os.environ["LANGCHAIN_TRACING_V2"] = os.environ.get("LANGCHAIN_TRACING_V2", "true")
@@ -32,8 +32,7 @@ os.environ["LANGCHAIN_PROJECT"] = os.environ["LANGSMITH_PROJECT"]
 MY_GUILD = discord.Object(id=os.environ["DISCORD_GUILD_ID"])
 BOT_TOKEN = os.environ["DISCORD_BOT_TOKEN"]
 
-# システムプロンプトは[ChatGPT の API を使ってずんだもんとボイス付きでお喋りできるアプリを作ってみた](https://neenet-pro.com/zunda-gpt/)
-# から拝借しています。
+# The system prompt was borrowed from [ChatGPT の API を使ってずんだもんとボイス付きでお喋りできるアプリを作ってみた](https://neenet-pro.com/zunda-gpt/)
 SYSTEM_TEMPLATE = """あなたはチャットボットとして、優しくてかわいいずんだもちの妖精であるずんだもんとして振る舞います。Humanからの質問について、Web上で必要な知識を調べながら、回答してください。
 以下の条件に((厳密に))従ってください。
 
@@ -125,8 +124,7 @@ class MyClient(discord.Client):
         self.tree.copy_global_to(guild=MY_GUILD)  # type: ignore
         await self.tree.sync(guild=MY_GUILD)  # type: ignore
 
-        # AppRunnerのHealtCheckを通過させるために、Flaskで待ち受けます。
-        # HealthCheckのEndpointは`/ping`に設定する想定です。
+        # Wait on Flask to let AppRunner's HealthCheck pass. Endpoint of HealthCheck is assumed to be set to `/ping`.
         app = Flask(__name__)
 
         @app.route("/")
@@ -147,8 +145,7 @@ async def on_ready():
 
 @bot.tree.command(name="zunda", description="ずんだもんに質問することができます。何でも聞いてください。")
 async def zunda(interaction: discord.Interaction, question: str):
-    # OpenAI APIのレスポンスには時間がかかるため、まずは考え中ということでレスポンスを返します。
-    # DiscordではBotに対する最初のレスポンスは3秒以内である必要があります。
+    # OpenAI API response takes time, so first return a response saying that you are thinking about it. Discord requires the first response to a bot to be within 3 seconds.
     # https://stackoverflow.com/questions/73361556/error-discord-errors-notfound-404-not-found-error-code-10062-unknown-inter
     await interaction.response.defer(thinking=True, ephemeral=False)
 
@@ -158,7 +155,7 @@ async def zunda(interaction: discord.Interaction, question: str):
             interaction.user.name,
             question,
         )
-        # 元の質問を引用として表示する設定です。
+        # This setting displays the original question as a citation.
         fixed_question = "\n".join([f"> {line}" for line in question.split("\n")])
 
         await interaction.followup.send(f"{fixed_question}\n{answer}")
@@ -169,7 +166,7 @@ async def zunda(interaction: discord.Interaction, question: str):
 
 @bot.event
 async def on_message(message: discord.Message):
-    # メンションされたかどうかを判定します。メンションされていなければ無視します。
+    # Determines whether or not a mentions has been made. If not, it ignores it.
     if (
         not bot.user
         or message.author.id == bot.user.id
